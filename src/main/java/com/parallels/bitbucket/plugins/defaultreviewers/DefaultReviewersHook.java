@@ -1,8 +1,9 @@
 package com.parallels.bitbucket.plugins.defaultreviewers;
 
-import com.atlassian.bitbucket.hook.repository.RepositoryMergeRequestCheck;
-import com.atlassian.bitbucket.hook.repository.RepositoryMergeRequestCheckContext;
-import com.atlassian.bitbucket.scm.pull.MergeRequest;
+import com.atlassian.bitbucket.hook.repository.RepositoryMergeCheck;
+import com.atlassian.bitbucket.hook.repository.PreRepositoryHookContext;
+import com.atlassian.bitbucket.hook.repository.PullRequestMergeHookRequest;
+import com.atlassian.bitbucket.hook.repository.RepositoryHookResult;
 import com.atlassian.bitbucket.pull.PullRequest;
 import com.atlassian.bitbucket.pull.PullRequestChangesRequest;
 import com.atlassian.bitbucket.pull.PullRequestService;
@@ -21,6 +22,10 @@ import com.atlassian.bitbucket.user.UserService;
 import com.atlassian.bitbucket.util.Operation;
 import com.atlassian.bitbucket.user.SecurityService;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,18 +34,20 @@ import java.util.List;
 import java.util.logging.Logger;
 
 
-public class DefaultReviewersHook implements RepositoryMergeRequestCheck {
+@Component("defaultReviewersHook")
+public class DefaultReviewersHook implements RepositoryMergeCheck {
   private final PullRequestService pullRequestService;
   private final GitCommandBuilderFactory builderFactory;
   private final SecurityService securityService;
   private final UserService userService;
   private static final Logger log = Logger.getLogger(DefaultReviewersHook.class.getName());
 
+  @Autowired
   public DefaultReviewersHook (
-    final PullRequestService pullRequestService,
-    final GitCommandBuilderFactory builderFactory,
-    final SecurityService securityService,
-    final UserService userService
+    @ComponentImport final PullRequestService pullRequestService,
+    @ComponentImport final GitCommandBuilderFactory builderFactory,
+    @ComponentImport final SecurityService securityService,
+    @ComponentImport final UserService userService
   ) {
     this.pullRequestService = pullRequestService;
     this.builderFactory = builderFactory;
@@ -49,12 +56,13 @@ public class DefaultReviewersHook implements RepositoryMergeRequestCheck {
   }
 
   @Override
-  public void check(RepositoryMergeRequestCheckContext context) {
-    final MergeRequest mergeRequest = context.getMergeRequest();
-    final PullRequest pullRequest = mergeRequest.getPullRequest();
-    final Repository repo = pullRequest.getToRef().getRepository();
+  public RepositoryHookResult preUpdate(PreRepositoryHookContext context,
+        PullRequestMergeHookRequest request) {
 
-    final String newSha = pullRequest.getFromRef().getLatestCommit();
+    final PullRequest pullRequest = request.getPullRequest();
+    final Repository repo = request.getToRef().getRepository();
+
+    final String newSha = request.getFromRef().getLatestCommit();
 
     Path gitIndex = null;
     try {
@@ -117,6 +125,7 @@ public class DefaultReviewersHook implements RepositoryMergeRequestCheck {
       } catch (Exception e) { // IOException, NullPointerException
         log.warning(e.toString());
       }
+      return RepositoryHookResult.accepted();
     }
   }
 
