@@ -28,4 +28,6 @@
         <icon>images/pluginLogo.png</icon>
     </repository-hook>
 
+    <component key="pullRequestEventListener" class="com.parallels.bitbucket.plugins.defaultreviewers.PullRequestEventListener"/>
+
 </atlassian-plugin>

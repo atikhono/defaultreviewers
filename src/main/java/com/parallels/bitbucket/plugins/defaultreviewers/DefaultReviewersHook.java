@@ -21,6 +21,8 @@ import com.atlassian.bitbucket.user.UserService;
 import com.atlassian.bitbucket.util.Operation;
 import com.atlassian.bitbucket.user.SecurityService;
 
+import com.atlassian.sal.api.pluginsettings.PluginSettingsFactory;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,22 +32,27 @@ import java.util.logging.Logger;
 
 
 public class DefaultReviewersHook implements RepositoryMergeRequestCheck {
+  private static final String PLUGIN_KEY = "com.parallels.bitbucket.plugins.defaultreviewers";
+
   private final PullRequestService pullRequestService;
   private final GitCommandBuilderFactory builderFactory;
   private final SecurityService securityService;
   private final UserService userService;
+  private final PluginSettingsFactory pluginSettingsFactory;
   private static final Logger log = Logger.getLogger(DefaultReviewersHook.class.getName());
 
   public DefaultReviewersHook (
     final PullRequestService pullRequestService,
     final GitCommandBuilderFactory builderFactory,
     final SecurityService securityService,
-    final UserService userService
+    final UserService userService,
+    final PluginSettingsFactory pluginSettingsFactory
   ) {
     this.pullRequestService = pullRequestService;
     this.builderFactory = builderFactory;
     this.securityService = securityService;
     this.userService = userService;
+    this.pluginSettingsFactory = pluginSettingsFactory;
   }
 
   @Override
@@ -53,8 +60,13 @@ public class DefaultReviewersHook implements RepositoryMergeRequestCheck {
     final MergeRequest mergeRequest = context.getMergeRequest();
     final PullRequest pullRequest = mergeRequest.getPullRequest();
     final Repository repo = pullRequest.getToRef().getRepository();
+    final String pluginSettingsId = String.format("%d.%d", repo.getId(), pullRequest.getId());
 
     final String newSha = pullRequest.getFromRef().getLatestCommit();
+
+    if (newSha.equals(pluginSettingsFactory.createSettingsForKey(PLUGIN_KEY).get(pluginSettingsId))) {
+        return;
+    }
 
     Path gitIndex = null;
     try {
@@ -109,6 +121,8 @@ public class DefaultReviewersHook implements RepositoryMergeRequestCheck {
             }
           }
         );
+
+        pluginSettingsFactory.createSettingsForKey(PLUGIN_KEY).put(pluginSettingsId, newSha);
     } catch (IOException e) {
       log.severe(e.toString());
     } finally {
