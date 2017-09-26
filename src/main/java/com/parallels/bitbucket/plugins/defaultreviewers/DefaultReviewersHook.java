@@ -22,6 +22,8 @@ import com.atlassian.bitbucket.user.UserService;
 import com.atlassian.bitbucket.util.Operation;
 import com.atlassian.bitbucket.user.SecurityService;
 
+import com.atlassian.sal.api.pluginsettings.PluginSettingsFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import com.atlassian.plugin.spring.scanner.annotation.imports.ComponentImport;
@@ -36,10 +38,13 @@ import java.util.logging.Logger;
 
 @Component("defaultReviewersHook")
 public class DefaultReviewersHook implements RepositoryMergeCheck {
+  private static final String PLUGIN_KEY = "com.parallels.bitbucket.plugins.defaultreviewers";
+
   private final PullRequestService pullRequestService;
   private final GitCommandBuilderFactory builderFactory;
   private final SecurityService securityService;
   private final UserService userService;
+  private final PluginSettingsFactory pluginSettingsFactory;
   private static final Logger log = Logger.getLogger(DefaultReviewersHook.class.getName());
 
   @Autowired
@@ -47,12 +52,14 @@ public class DefaultReviewersHook implements RepositoryMergeCheck {
     @ComponentImport final PullRequestService pullRequestService,
     @ComponentImport final GitCommandBuilderFactory builderFactory,
     @ComponentImport final SecurityService securityService,
-    @ComponentImport final UserService userService
+    @ComponentImport final UserService userService,
+    @ComponentImport final PluginSettingsFactory pluginSettingsFactory
   ) {
     this.pullRequestService = pullRequestService;
     this.builderFactory = builderFactory;
     this.securityService = securityService;
     this.userService = userService;
+    this.pluginSettingsFactory = pluginSettingsFactory;
   }
 
   @Override
@@ -61,8 +68,13 @@ public class DefaultReviewersHook implements RepositoryMergeCheck {
 
     final PullRequest pullRequest = request.getPullRequest();
     final Repository repo = request.getToRef().getRepository();
+    final String pluginSettingsId = String.format("%d.%d", repo.getId(), pullRequest.getId());
 
     final String newSha = request.getFromRef().getLatestCommit();
+
+    if (newSha.equals(pluginSettingsFactory.createSettingsForKey(PLUGIN_KEY).get(pluginSettingsId))) {
+        return RepositoryHookResult.accepted();
+    }
 
     Path gitIndex = null;
     try {
@@ -117,6 +129,7 @@ public class DefaultReviewersHook implements RepositoryMergeCheck {
             }
           }
         );
+        pluginSettingsFactory.createSettingsForKey(PLUGIN_KEY).put(pluginSettingsId, newSha);
     } catch (IOException e) {
       log.severe(e.toString());
     } finally {
