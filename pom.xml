@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.parallels.bitbucket.plugins</groupId>
     <artifactId>defaultreviewers</artifactId>
-    <version>2.0.0</version>
+    <version>2.0.1</version>
 
     <organization>
         <name>Parallels International GmbH</name>
