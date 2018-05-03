@@ -13,5 +13,9 @@
     <repository-merge-check name="Default Reviewers Extended" i18n-name-key="defaultreviewers-hook.name" key="defaultreviewers-hook" class="bean:defaultReviewersHook">
         <description key="defaultreviewers-hook.description">Add default pull request reviewers to paths in repository</description>
         <icon>images/pluginLogo.png</icon>
+        <scopes>
+            <scope>project</scope>
+            <scope>repository</scope>
+        </scopes>
     </repository-merge-check>
 </atlassian-plugin>
