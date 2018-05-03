@@ -13,6 +13,13 @@
         <url>http://www.parallels.com/</url>
     </organization>
 
+    <contributors>
+        <contributor>
+            <name>Krzysztof Malinowski</name>
+            <organization>Motorola Solutions, Inc.</organization>
+        </contributor>
+    </contributors>
+
     <name>Default Reviewers Extended</name>
     <description>Add default pull request reviewers for paths in repository</description>
     <packaging>atlassian-plugin</packaging>
@@ -133,7 +140,7 @@
                             <instanceId>bitbucket</instanceId>
                             <version>${bitbucket.version}</version>
                             <dataVersion>${bitbucket.data.version}</dataVersion>
-                        </product>  
+                        </product>
                     </products>
                 </configuration>
             </plugin>
@@ -172,6 +179,124 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>datacenter</id>
+
+            <activation>
+                <activeByDefault>false</activeByDefault>
+                <property>
+                    <name>testGroup</name>
+                    <value>bitbucket-datacenter</value>
+                </property>
+            </activation>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.atlassian.maven.plugins</groupId>
+                        <artifactId>bitbucket-maven-plugin</artifactId>
+                        <version>${amps.version}</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <products>
+                                <product>
+                                    <id>bitbucket</id>
+                                    <instanceId>bitbucket-node-1</instanceId>
+                                    <version>${bitbucket.version}</version>
+                                    <dataVersion>${bitbucket.data.version}</dataVersion>
+                                    <httpPort>7970</httpPort>
+                                    <systemPropertyVariables>
+                                        <bitbucket.shared.home>${project.basedir}/target/bitbucket-node-1/home/shared</bitbucket.shared.home>
+                                        <plugin.ssh.port>7997</plugin.ssh.port>
+                                        <jdbc.url>jdbc:h2:${project.basedir}/target/shared/dbshared;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=TRUE</jdbc.url>
+                                        <jdbc.user>sa</jdbc.user>
+                                        <jdbc.password></jdbc.password>
+                                        <hazelcast.network.tcpip>true</hazelcast.network.tcpip>
+                                        <hazelcast.http.stickysessions>false</hazelcast.http.stickysessions>
+                                    </systemPropertyVariables>
+                                </product>
+                                <product>
+                                    <id>bitbucket</id>
+                                    <instanceId>bitbucket-node-2</instanceId>
+                                    <version>${bitbucket.version}</version>
+                                    <dataVersion>${bitbucket.data.version}</dataVersion>
+                                    <httpPort>7980</httpPort>
+                                    <systemPropertyVariables>
+                                        <bitbucket.shared.home>${project.basedir}/target/bitbucket-node-1/home/shared</bitbucket.shared.home>
+                                        <plugin.ssh.port>7998</plugin.ssh.port>
+                                        <jdbc.url>jdbc:h2:${project.basedir}/target/shared/dbshared;DB_CLOSE_ON_EXIT=FALSE;AUTO_SERVER=TRUE</jdbc.url>
+                                        <jdbc.user>sa</jdbc.user>
+                                        <jdbc.password></jdbc.password>
+                                        <hazelcast.network.tcpip>true</hazelcast.network.tcpip>
+                                        <hazelcast.http.stickysessions>false</hazelcast.http.stickysessions>
+                                    </systemPropertyVariables>
+                                </product>
+                            </products>
+                            <testGroups>
+                                <testGroup>
+                                    <id>bitbucket-datacenter</id>
+                                    <productIds>
+                                        <productId>bitbucket-node-1</productId>
+                                        <productId>bitbucket-node-2</productId>
+                                    </productIds>
+                                </testGroup>
+                            </testGroups>
+                        </configuration>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>com.atlassian.maven.plugins</groupId>
+                        <artifactId>load-balancer-maven-plugin</artifactId>
+                        <version>1.1</version>
+                        <executions>
+                            <execution>
+                                <id>start-load-balancer</id>
+                                <phase>prepare-package</phase>
+                                <goals>
+                                    <goal>start</goal>
+                                </goals>
+                            </execution>
+                            <execution>
+                                <id>stop-load-balancer</id>
+                                <phase>post-integration-test</phase>
+                                <goals>
+                                    <goal>stop</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <balancers>
+                                <balancer>
+                                    <port>7990</port>
+                                    <targets>
+                                        <target>
+                                            <port>7970</port>
+                                        </target>
+                                        <target>
+                                            <port>7980</port>
+                                        </target>
+                                    </targets>
+                                </balancer>
+                                <balancer>
+                                    <port>7999</port>
+                                    <targets>
+                                        <target>
+                                            <port>7997</port>
+                                        </target>
+                                        <target>
+                                            <port>7998</port>
+                                        </target>
+                                    </targets>
+                                </balancer>
+                            </balancers>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
     
     <properties>
         <bitbucket.version>4.12.1</bitbucket.version>
